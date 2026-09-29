@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model League {
+  id      Int     @id @default(autoincrement())
+  name    String
+  country String
+  logoUrl String?
+  active  Boolean @default(true)
+  teams   Team[]
+}
+
+model Team {
+  id               Int                @id @default(autoincrement())
+  name             String
+  leagueId         Int
+  league           League             @relation(fields: [leagueId], references: [id])
+  logoUrl          String?
+  customWheelTeams CustomWheelTeam[]
+}
+
+model CustomWheel {
+  id     Int               @id @default(autoincrement())
+  name   String
+  teams  CustomWheelTeam[]
+}
+
+model CustomWheelTeam {
+  customWheelId Int
+  customWheel   CustomWheel @relation(fields: [customWheelId], references: [id], onDelete: Cascade)
+  teamId        Int
+  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([customWheelId, teamId])
+}
+
+model Player {
+  id              Int              @id @default(autoincrement())
+  name            String
+  sessionPlayers  SessionPlayer[]
+  player1Matches  Match[]          @relation("player1Matches")
+  player2Matches  Match[]          @relation("player2Matches")
+  winnerMatches   Match[]          @relation("winnerMatches")
+}
+
+model GameSession {
+  id            Int             @id @default(autoincrement())
+  mode          String
+  status        String          @default("active")
+  currentRound  Int             @default(1)
+  createdAt     DateTime        @default(now())
+  players       SessionPlayer[]
+  matches       Match[]
+  bet           Bet?
+}
+
+model SessionPlayer {
+  sessionId  Int
+  session    GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  playerId   Int
+  player     Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  orderIndex Int
+
+  @@id([sessionId, playerId])
+}
+
+model Match {
+  id        Int          @id @default(autoincrement())
+  sessionId Int
+  session   GameSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  player1Id Int
+  player1   Player       @relation("player1Matches", fields: [player1Id], references: [id])
+  player2Id Int
+  player2   Player       @relation("player2Matches", fields: [player2Id], references: [id])
+  winnerId  Int?
+  winner    Player?      @relation("winnerMatches", fields: [winnerId], references: [id])
+  goals1    Int          @default(0)
+  goals2    Int          @default(0)
+  points    Int          @default(3)
+}
+
+model Bet {
+  id            Int         @id @default(autoincrement())
+  sessionId     Int         @unique
+  type          String
+  description   String
+  amount        String?
+  winnerTakeAll Boolean     @default(true)
+  session       GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
